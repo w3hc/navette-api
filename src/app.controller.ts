@@ -1,16 +1,12 @@
 import { Controller, Get, Post, Body, Param, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { AppService } from './app.service';
 import { DatabaseService } from './database/database.service';
 import { SwapDto, ExecuteSwapDto } from './dto/swap.dto';
 
 @ApiTags('swaps')
 @Controller('swaps')
 export class AppController {
-  constructor(
-    private readonly appService: AppService,
-    private readonly databaseService: DatabaseService,
-  ) {}
+  constructor(private readonly databaseService: DatabaseService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all swaps' })
@@ -32,7 +28,7 @@ export class AppController {
   }
 
   @Post(':hash/execute')
-  @HttpCode(200) // This line ensures a 200 status code is returned
+  @HttpCode(200)
   @ApiOperation({ summary: 'Execute a swap' })
   @ApiResponse({
     status: 200,
