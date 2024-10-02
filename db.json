@@ -1,0 +1,28 @@
+{
+  "swaps": [
+    {
+      "hash": "string",
+      "executed": false
+    },
+    {
+      "hash": "new-test-hash",
+      "executed": false
+    },
+    {
+      "hash": "0x1234567890abcdef",
+      "executed": false
+    },
+    {
+      "hash": "0x1234567890abcdef",
+      "executed": false
+    },
+    {
+      "hash": "1",
+      "executed": false
+    },
+    {
+      "hash": "new-test-hash",
+      "executed": false
+    }
+  ]
+}
