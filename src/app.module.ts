@@ -6,6 +6,15 @@ import { DatabaseService } from './database/database.service';
 @Module({
   imports: [],
   controllers: [AppController],
-  providers: [AppService, DatabaseService],
+  providers: [
+    AppService,
+    {
+      provide: DatabaseService,
+      useFactory: () => {
+        const dbFilePath = process.env.DB_FILE_PATH || 'data/db.json';
+        return new DatabaseService(dbFilePath);
+      },
+    },
+  ],
 })
 export class AppModule {}

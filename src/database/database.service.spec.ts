@@ -1,77 +1,79 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseService } from './database.service';
+import * as path from 'path';
 import * as fs from 'fs';
-import * as lowdb from 'lowdb';
-import * as FileSync from 'lowdb/adapters/FileSync';
-
-jest.mock('lowdb');
-jest.mock('lowdb/adapters/FileSync');
+import * as os from 'os';
 
 describe('DatabaseService', () => {
   let service: DatabaseService;
-  const mockDb = {
-    defaults: jest.fn().mockReturnThis(),
-    write: jest.fn(),
-    get: jest.fn().mockReturnThis(),
-    push: jest.fn().mockReturnThis(),
-    find: jest.fn().mockReturnThis(),
-    assign: jest.fn().mockReturnThis(),
-    value: jest.fn(),
-  };
+  let tempDir: string;
+  let dbFile: string;
 
   beforeEach(async () => {
-    (lowdb as jest.MockedFunction<any>).mockReturnValue(mockDb);
-    (FileSync as jest.MockedClass<any>).mockImplementation(() => ({}));
+    // Create a temporary directory for testing
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-db-'));
+    dbFile = path.join(tempDir, 'db.json');
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DatabaseService],
+      providers: [
+        {
+          provide: DatabaseService,
+          useFactory: () => {
+            return new DatabaseService(dbFile);
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<DatabaseService>(DatabaseService);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    // Clean up the temporary directory after each test
+    fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  it('should initialize the database with default data', () => {
-    expect(FileSync).toHaveBeenCalledWith('db.json');
-    expect(lowdb).toHaveBeenCalled();
-    expect(mockDb.defaults).toHaveBeenCalledWith({ swaps: [] });
-    expect(mockDb.write).toHaveBeenCalled();
+  it("should create the database file if it doesn't exist", () => {
+    expect(fs.existsSync(dbFile)).toBeTruthy();
   });
 
-  it('should get all swaps', () => {
-    const mockSwaps = [{ hash: 'hash1', executed: false }];
-    mockDb.value.mockReturnValue(mockSwaps);
-
+  it('should initialize with an empty swaps array', () => {
     const swaps = service.getSwaps();
-
-    expect(mockDb.get).toHaveBeenCalledWith('swaps');
-    expect(swaps).toEqual(mockSwaps);
+    expect(swaps).toEqual([]);
   });
 
   it('should add a swap', () => {
     service.addSwap('test-hash');
-
-    expect(mockDb.get).toHaveBeenCalledWith('swaps');
-    expect(mockDb.push).toHaveBeenCalledWith({
-      hash: 'test-hash',
-      executed: false,
-    });
-    expect(mockDb.write).toHaveBeenCalled();
+    const swaps = service.getSwaps();
+    expect(swaps).toHaveLength(1);
+    expect(swaps[0]).toEqual({ hash: 'test-hash', executed: false });
   });
 
   it('should update swap status', () => {
+    service.addSwap('test-hash');
     service.updateSwapStatus('test-hash', true);
+    const swaps = service.getSwaps();
+    expect(swaps[0]).toEqual({ hash: 'test-hash', executed: true });
+  });
 
-    expect(mockDb.get).toHaveBeenCalledWith('swaps');
-    expect(mockDb.find).toHaveBeenCalledWith({ hash: 'test-hash' });
-    expect(mockDb.assign).toHaveBeenCalledWith({ executed: true });
-    expect(mockDb.write).toHaveBeenCalled();
+  it('should not update status of non-existent swap', () => {
+    service.updateSwapStatus('non-existent-hash', true);
+    const swaps = service.getSwaps();
+    expect(swaps).toEqual([]);
+  });
+
+  it('should return all swaps', () => {
+    service.addSwap('hash1');
+    service.addSwap('hash2');
+    const swaps = service.getSwaps();
+    expect(swaps).toHaveLength(2);
+    expect(swaps).toEqual([
+      { hash: 'hash1', executed: false },
+      { hash: 'hash2', executed: false },
+    ]);
   });
 });

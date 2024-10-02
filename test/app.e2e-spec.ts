@@ -11,7 +11,14 @@ describe('AppController (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(DatabaseService)
+      .useValue({
+        getSwaps: jest.fn().mockReturnValue([]),
+        addSwap: jest.fn(),
+        updateSwapStatus: jest.fn(),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     databaseService = moduleFixture.get<DatabaseService>(DatabaseService);

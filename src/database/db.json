@@ -1,0 +1,12 @@
+{
+  "swaps": [
+    {
+      "hash": "0x...",
+      "executed": false
+    },
+    {
+      "hash": "1",
+      "executed": false
+    }
+  ]
+}
