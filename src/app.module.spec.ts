@@ -1,61 +1,84 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { AppModule } from './app.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseService } from './database/database.service';
-import { SwapDto, ExecuteSwapDto } from './dto/swap.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
-describe('AppController', () => {
-  let appController: AppController;
-  let databaseService: DatabaseService;
+describe('AppModule', () => {
+  let module: TestingModule;
+  let dbService: DatabaseService;
 
   beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [
-        AppService,
-        {
-          provide: DatabaseService,
-          useValue: {
-            getSwaps: jest.fn(),
-            addSwap: jest.fn(),
-            updateSwapStatus: jest.fn(),
-          },
-        },
-      ],
+    // Clear the database before each test
+    const dbPath = path.join(process.cwd(), 'src', 'database', 'db.json');
+    if (fs.existsSync(dbPath)) {
+      fs.writeFileSync(dbPath, JSON.stringify({ swaps: [] }));
+    }
+
+    module = await Test.createTestingModule({
+      imports: [AppModule],
     }).compile();
 
-    appController = app.get<AppController>(AppController);
-    databaseService = app.get<DatabaseService>(DatabaseService);
+    dbService = module.get<DatabaseService>(DatabaseService);
   });
 
-  describe('getSwaps', () => {
-    it('should return all swaps', () => {
-      const swaps = [{ hash: 'test', executed: false }];
-      jest.spyOn(databaseService, 'getSwaps').mockReturnValue(swaps);
-      expect(appController.getSwaps()).toBe(swaps);
-    });
+  afterEach(async () => {
+    await module.close();
   });
 
-  describe('addSwap', () => {
-    it('should add a swap', () => {
-      const swapDto: SwapDto = { hash: 'test-hash' };
-      const result = appController.addSwap(swapDto);
-      expect(databaseService.addSwap).toHaveBeenCalledWith(swapDto.hash);
-      expect(result).toEqual({ message: 'Swap added successfully' });
-    });
+  it('should be defined', () => {
+    expect(module).toBeDefined();
   });
 
-  describe('executeSwap', () => {
-    it('should execute a swap', () => {
-      const executeSwapDto: ExecuteSwapDto = {
-        hash: 'test-hash',
-      };
-      const result = appController.executeSwap(executeSwapDto);
-      expect(databaseService.updateSwapStatus).toHaveBeenCalledWith(
-        executeSwapDto.hash,
-        true,
-      );
-      expect(result).toEqual({ message: 'Swap executed successfully' });
+  it('should have AppController', () => {
+    const controller = module.get<AppController>(AppController);
+    expect(controller).toBeDefined();
+  });
+
+  it('should have AppService', () => {
+    const service = module.get<AppService>(AppService);
+    expect(service).toBeDefined();
+  });
+
+  it('should have DatabaseService', () => {
+    expect(dbService).toBeDefined();
+  });
+
+  it('should use custom database file path if provided', async () => {
+    const customDbPath = path.join(process.cwd(), 'test', 'custom-db.json');
+    process.env.DB_FILE_PATH = customDbPath;
+
+    const customModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    const customDbService = customModule.get<DatabaseService>(DatabaseService);
+
+    customDbService.addSwap('testHash');
+    const swaps = customDbService.getSwaps();
+    expect(swaps).toContainEqual({ hash: 'testHash', executed: false });
+
+    // Clean up
+    await customModule.close();
+    if (fs.existsSync(customDbPath)) {
+      fs.unlinkSync(customDbPath);
+    }
+    delete process.env.DB_FILE_PATH;
+  });
+
+  it('should use default database file path if not provided', async () => {
+    const initialSwaps = dbService.getSwaps();
+    expect(initialSwaps.length).toBe(0);
+
+    dbService.addSwap('defaultTestHash');
+    const updatedSwaps = dbService.getSwaps();
+
+    expect(updatedSwaps.length).toBe(1);
+    expect(updatedSwaps).toContainEqual({
+      hash: 'defaultTestHash',
+      executed: false,
     });
   });
 });

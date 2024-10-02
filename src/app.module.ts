@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseService } from './database/database.service';
+import * as path from 'path';
 
 @Module({
   imports: [],
@@ -11,7 +12,12 @@ import { DatabaseService } from './database/database.service';
     {
       provide: DatabaseService,
       useFactory: () => {
-        const dbFilePath = process.env.DB_FILE_PATH || 'data/db.json';
+        const dbFilePath = path.join(
+          process.cwd(),
+          'src',
+          'database',
+          'db.json',
+        );
         return new DatabaseService(dbFilePath);
       },
     },

@@ -8,7 +8,7 @@ export async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Navette API')
     .setDescription('The Navette API description')
-    .setVersion('1.0')
+    .setVersion('0.1.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
@@ -18,7 +18,8 @@ export async function bootstrap() {
 
 export async function startServer() {
   const app = await bootstrap();
-  await app.listen(3000);
+  const server = await app.listen(3000);
+  return { app, server };
 }
 
 if (require.main === module) {
