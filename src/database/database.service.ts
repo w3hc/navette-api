@@ -12,13 +12,13 @@ type Schema = {
   swaps: {
     hash: string;
     executed: boolean;
-    from: string;
-    to: string;
-    value: string;
+    user: string;
+    operator: string;
     blockNumber: number;
     isERC20: boolean;
-    tokenAddress?: string;
-    tokenAmount?: string;
+    tokenAddressOnSepolia?: string;
+    tokenAddressOnOPSepolia?: string;
+    amount?: number;
     sendTx?: string;
   }[];
 };
@@ -76,9 +76,8 @@ export class DatabaseService {
       let swapData: Schema['swaps'][0] = {
         hash,
         executed: true,
-        from: tx.from,
-        to: tx.to!,
-        value: tx.value.toString(),
+        user: tx.from,
+        operator: tx.to!,
         blockNumber: receipt.blockNumber,
         isERC20: false,
       };
@@ -106,13 +105,15 @@ export class DatabaseService {
         tokenAmount = ethers.formatUnits(decodedData.args[1], decimals);
         recipient = decodedData.args[0];
 
+        const parsedTokenAmount = Number(parseFloat(tokenAmount).toFixed(2));
+
         swapData = {
           ...swapData,
           isERC20: true,
-          to: recipient,
-          tokenAddress: tx.to!,
-          tokenAmount: tokenAmount,
-          value: '0', // ERC20 transfers typically have 0 ETH value
+          operator: recipient,
+          tokenAddressOnSepolia: tx.to!,
+          tokenAddressOnOPSepolia: '0x2BE5A3e94240Ef08764eB9Bc16CbB917741C15a1', // Add this line with the correct address
+          amount: parsedTokenAmount,
         };
       }
 
@@ -338,7 +339,8 @@ export class DatabaseService {
       ///// Checks /////
 
       if (
-        swapData.tokenAddress !== '0xF57cE903E484ca8825F2c1EDc7F9EEa3744251eB'
+        swapData.tokenAddressOnSepolia !==
+        '0xF57cE903E484ca8825F2c1EDc7F9EEa3744251eB'
       ) {
         return;
       }
