@@ -53,19 +53,6 @@ describe('DatabaseService', () => {
     expect(swaps[0]).toEqual({ hash: 'test-hash', executed: false });
   });
 
-  it('should update swap status', () => {
-    service.addSwap('test-hash');
-    service.updateSwapStatus('test-hash', true);
-    const swaps = service.getSwaps();
-    expect(swaps[0]).toEqual({ hash: 'test-hash', executed: true });
-  });
-
-  it('should not update status of non-existent swap', () => {
-    service.updateSwapStatus('non-existent-hash', true);
-    const swaps = service.getSwaps();
-    expect(swaps).toEqual([]);
-  });
-
   it('should return all swaps', () => {
     service.addSwap('hash1');
     service.addSwap('hash2');

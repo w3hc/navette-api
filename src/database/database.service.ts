@@ -376,8 +376,4 @@ export class DatabaseService {
   getSwaps() {
     return this.db.get('swaps').value();
   }
-
-  updateSwapStatus(hash: string, executed: boolean) {
-    this.db.get('swaps').find({ hash }).assign({ executed }).write();
-  }
 }

@@ -16,7 +16,6 @@ describe('AppController (e2e)', () => {
       .useValue({
         getSwaps: jest.fn().mockReturnValue([]),
         addSwap: jest.fn(),
-        updateSwapStatus: jest.fn(),
       })
       .compile();
 
@@ -30,7 +29,20 @@ describe('AppController (e2e)', () => {
   });
 
   it('/swaps (GET)', () => {
-    const mockSwaps = [{ hash: 'test-hash', executed: false }];
+    const mockSwaps = [
+      {
+        hash: 'test-hash',
+        executed: false,
+        user: '0x1234567890123456789012345678901234567890',
+        operator: '0x0987654321098765432109876543210987654321',
+        blockNumber: 12345,
+        isERC20: true,
+        tokenAddressOnSepolia: '0xabcdef1234567890abcdef1234567890abcdef12',
+        tokenAddressOnOPSepolia: '0x1234567890abcdef1234567890abcdef12345678',
+        amount: 100,
+        sendTx: '0xfedcba9876543210fedcba9876543210fedcba98',
+      },
+    ];
     jest.spyOn(databaseService, 'getSwaps').mockReturnValue(mockSwaps);
 
     return request(app.getHttpServer())
@@ -41,20 +53,24 @@ describe('AppController (e2e)', () => {
 
   it('/swaps (POST)', () => {
     const newSwap = { hash: 'new-test-hash' };
+    const mockSwapData = {
+      hash: 'new-test-hash',
+      executed: false,
+      user: '0x1234567890123456789012345678901234567890',
+      operator: '0x0987654321098765432109876543210987654321',
+      blockNumber: 12345,
+      isERC20: true,
+      tokenAddressOnSepolia: '0xabcdef1234567890abcdef1234567890abcdef12',
+      tokenAddressOnOPSepolia: '0x1234567890abcdef1234567890abcdef12345678',
+      amount: 100,
+      sendTx: '0xfedcba9876543210fedcba9876543210fedcba98',
+    };
+    jest.spyOn(databaseService, 'addSwap').mockResolvedValue(mockSwapData);
 
     return request(app.getHttpServer())
       .post('/swaps')
       .send(newSwap)
       .expect(201)
-      .expect({ message: 'Swap added successfully' });
-  });
-
-  it('/swaps/:hash/execute (POST)', () => {
-    const hashToExecute = 'test-hash-to-execute';
-
-    return request(app.getHttpServer())
-      .post(`/swaps/${hashToExecute}/execute`)
-      .expect(200)
-      .expect({ message: 'Swap executed successfully' });
+      .expect({ message: 'Swap added successfully', swapData: mockSwapData });
   });
 });

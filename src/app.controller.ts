@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Param, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { DatabaseService } from './database/database.service';
-import { SwapDto, ExecuteSwapDto } from './dto/swap.dto';
+import { SwapDto } from './dto/swap.dto';
 
 @ApiTags('swaps')
 @Controller('swaps')
@@ -25,17 +25,5 @@ export class AppController {
   async addSwap(@Body() swapDto: SwapDto) {
     const swapData = await this.databaseService.addSwap(swapDto.hash);
     return { message: 'Swap added successfully', swapData: swapData };
-  }
-
-  @Post(':hash/execute')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Execute a swap' })
-  @ApiResponse({
-    status: 200,
-    description: 'The swap has been successfully executed',
-  })
-  executeSwap(@Param() executeSwapDto: ExecuteSwapDto) {
-    this.databaseService.updateSwapStatus(executeSwapDto.hash, true);
-    return { message: 'Swap executed successfully' };
   }
 }
