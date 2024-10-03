@@ -2,7 +2,7 @@
   "swaps": [
     {
       "hash": "defaultTestHash",
-      "executed": false
+      "executed": true
     }
   ]
 }

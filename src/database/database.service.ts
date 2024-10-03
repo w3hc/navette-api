@@ -77,7 +77,7 @@ export class DatabaseService {
 
       let swapData: Schema['swaps'][0] = {
         hash,
-        executed: false,
+        executed: true,
         from: tx.from,
         to: tx.to!,
         value: tx.value.toString(),
@@ -86,6 +86,8 @@ export class DatabaseService {
       };
 
       let tokenAmount;
+      let recipient;
+
       // Check if it's an ERC20 transaction
       if (tx.data && tx.data.startsWith('0xa9059cbb')) {
         const erc20Interface = new ethers.Interface([
@@ -104,11 +106,12 @@ export class DatabaseService {
 
         // Calculate the actual token amount
         tokenAmount = ethers.formatUnits(decodedData.args[1], decimals);
+        recipient = decodedData.args[0];
 
         swapData = {
           ...swapData,
           isERC20: true,
-          to: decodedData.args[0],
+          to: recipient,
           tokenAddress: tx.to!,
           tokenAmount: tokenAmount,
           value: '0', // ERC20 transfers typically have 0 ETH value
@@ -124,7 +127,7 @@ export class DatabaseService {
       const address = '0x2BE5A3e94240Ef08764eB9Bc16CbB917741C15a1';
 
       const signer = new ethers.Wallet(
-        process.env.OPERATOR_SEPOLIA_PRIVATE_KEY,
+        process.env.OPERATOR_PRIVATE_KEY,
         this.providerOP,
       );
       const abi = [
@@ -328,21 +331,35 @@ export class DatabaseService {
 
       console.log('erc20onOP:', await erc20onOP.name());
       console.log('signer:', signer);
-      const status = 'available';
 
-      if (status === 'available') {
-        const txData = await erc20onOP.transfer(
-          tx.from,
-          ethers.parseEther(tokenAmount),
-        );
-        const receipt2 = await txData.wait(1);
-        console.log('receipt2:', receipt2);
+      const status = 'available'; // TODO: replace with an db check (create an available table)
 
-        swapData = {
-          ...swapData,
-          sendTx: receipt2.hash,
-        };
+      if ((await this.provider.getBlockNumber()) - swapData.blockNumber < 1) {
+        return;
       }
+
+      if (status !== 'available') {
+        return;
+      }
+
+      console.log('recipient:', recipient);
+      console.log('signer.address:', signer.address);
+
+      if (recipient !== signer.address) {
+        return;
+      }
+
+      const txData = await erc20onOP.transfer(
+        tx.from,
+        ethers.parseEther(tokenAmount),
+      );
+      const receipt2 = await txData.wait(1);
+      console.log('receipt2:', receipt2);
+
+      swapData = {
+        ...swapData,
+        sendTx: receipt2.hash,
+      };
 
       this.db.get('swaps').push(swapData).write();
 
