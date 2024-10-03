@@ -22,9 +22,9 @@ export class AppController {
     description: 'The swap has been successfully created',
   })
   @ApiBody({ type: SwapDto })
-  addSwap(@Body() swapDto: SwapDto) {
-    this.databaseService.addSwap(swapDto.hash);
-    return { message: 'Swap added successfully' };
+  async addSwap(@Body() swapDto: SwapDto) {
+    const swapData = await this.databaseService.addSwap(swapDto.hash);
+    return { message: 'Swap added successfully', swapData: swapData };
   }
 
   @Post(':hash/execute')
