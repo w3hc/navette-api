@@ -70,7 +70,6 @@ export class DatabaseService {
         throw new Error('Transaction not found');
       }
 
-      // Wait for the transaction to be mined
       const receipt = await tx.wait();
 
       let swapData: Schema['swaps'][0] = {
@@ -104,7 +103,6 @@ export class DatabaseService {
         // Calculate the actual token amount
         tokenAmount = ethers.formatUnits(decodedData.args[1], decimals);
         recipient = decodedData.args[0];
-
         const parsedTokenAmount = Number(parseFloat(tokenAmount).toFixed(2));
 
         swapData = {
@@ -112,7 +110,7 @@ export class DatabaseService {
           isERC20: true,
           operator: recipient,
           tokenAddressOnSepolia: tx.to!,
-          tokenAddressOnOPSepolia: '0x2BE5A3e94240Ef08764eB9Bc16CbB917741C15a1', // Add this line with the correct address
+          tokenAddressOnOPSepolia: '0x2BE5A3e94240Ef08764eB9Bc16CbB917741C15a1',
           amount: parsedTokenAmount,
         };
       }
@@ -120,9 +118,6 @@ export class DatabaseService {
       console.log('tx:', tx);
       console.log('swapData:', swapData);
 
-      // const transferInterface = new ethers.Interface([
-      //   'function transfer(address to, uint256 amount)',
-      // ]);
       const address = '0x2BE5A3e94240Ef08764eB9Bc16CbB917741C15a1';
 
       const signer = new ethers.Wallet(
@@ -357,16 +352,16 @@ export class DatabaseService {
         return;
       }
 
-      const txData = await erc20onOP.transfer(
+      const transferCall = await erc20onOP.transfer(
         tx.from,
         ethers.parseEther(tokenAmount),
       );
-      const receipt2 = await txData.wait(1);
-      console.log('receipt2:', receipt2);
+      const transferCallReceipt = await transferCall.wait(1);
+      console.log('transferCallReceipt:', transferCallReceipt);
 
       swapData = {
         ...swapData,
-        sendTx: receipt2.hash,
+        sendTx: transferCallReceipt.hash,
       };
 
       this.db.get('swaps').push(swapData).write();
