@@ -7,8 +7,10 @@ export async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Navette API')
-    .setDescription('The Navette API description')
-    .setVersion('0.1.0')
+    .setDescription(
+      "Send some BASIC tokens on Sepolia (https://sepolia.etherscan.io/address/0xF57cE903E484ca8825F2c1EDc7F9EEa3744251eB#writeContract) to the operator's address (0xd6B159d56749BeE815dF460FB373B2A1EC1517A8) and give this transaction hash as a parameter of your /swap POST request, you will receive the equivalent amount on OP Sepolia (https://sepolia-optimism.etherscan.io/address/0x2be5a3e94240ef08764eb9bc16cbb917741c15a1)",
+    )
+    .setVersion('0.1')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
