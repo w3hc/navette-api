@@ -52,13 +52,11 @@ export class DatabaseService {
     this.db.defaults({ swaps: [] }).write();
 
     // Initialize Sepolia provider
-    this.provider = new ethers.JsonRpcProvider(
-      process.env.NEXT_PUBLIC_RPC_ENDPOINT_URL,
-    );
+    this.provider = new ethers.JsonRpcProvider(process.env.RPC_ENDPOINT_URL);
 
     // Initialize OP Sepolia provider
     this.providerOP = new ethers.JsonRpcProvider(
-      process.env.NEXT_PUBLIC_OP_SEPOLIA_RPC_ENDPOINT_URL,
+      process.env.OP_SEPOLIA_RPC_ENDPOINT_URL,
     );
 
     console.log('this.provider:', this.provider);
@@ -334,18 +332,26 @@ export class DatabaseService {
 
       const status = 'available'; // TODO: replace with an db check (create an available table)
 
+      console.log('recipient:', recipient);
+      console.log('signer.address:', signer.address);
+
+      ///// Checks /////
+
+      if (
+        swapData.tokenAddress !== '0xF57cE903E484ca8825F2c1EDc7F9EEa3744251eB'
+      ) {
+        return;
+      }
+
+      if (recipient !== signer.address) {
+        return;
+      }
+
       if ((await this.provider.getBlockNumber()) - swapData.blockNumber < 1) {
         return;
       }
 
       if (status !== 'available') {
-        return;
-      }
-
-      console.log('recipient:', recipient);
-      console.log('signer.address:', signer.address);
-
-      if (recipient !== signer.address) {
         return;
       }
 
