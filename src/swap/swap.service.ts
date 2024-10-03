@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { DatabaseService } from '../database/database.service';
 import { SwapData } from '../types/swap.types';
@@ -8,17 +8,22 @@ dotenv.config();
 
 @Injectable()
 export class SwapService {
+  private readonly logger = new Logger(SwapService.name);
   private provider: ethers.JsonRpcProvider;
   private providerOP: ethers.JsonRpcProvider;
 
   constructor(private databaseService: DatabaseService) {
-    this.provider = new ethers.JsonRpcProvider(process.env.RPC_ENDPOINT_URL);
+    this.provider = new ethers.JsonRpcProvider(
+      process.env.SEPOLIA_RPC_ENDPOINT_URL,
+    );
     this.providerOP = new ethers.JsonRpcProvider(
       process.env.OP_SEPOLIA_RPC_ENDPOINT_URL,
     );
+    this.logger.log('SwapService initialized');
   }
 
   async executeSwap(hash: string): Promise<SwapData> {
+    this.logger.log(`Executing swap for hash: ${hash}`);
     try {
       const tx = await this.provider.getTransaction(hash);
 
@@ -309,6 +314,8 @@ export class SwapService {
         ...swapData,
         sendTx: transferCallReceipt.hash,
       };
+
+      this.logger.log(`Swap executed: ${transferCallReceipt.hash}`);
 
       // Call the database service to add the swap
       return this.databaseService.addSwap(swapData);
