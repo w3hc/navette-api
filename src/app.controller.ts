@@ -1,29 +1,36 @@
 import { Controller, Get, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { DatabaseService } from './database/database.service';
+import { SwapService } from './swap/swap.service';
 import { SwapDto } from './dto/swap.dto';
+import { SwapData } from './types/swap.types';
 
 @ApiTags('swaps')
 @Controller('swaps')
 export class AppController {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly swapService: SwapService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all swaps' })
   @ApiResponse({ status: 200, description: 'Return all swaps' })
-  getSwaps() {
+  getSwaps(): SwapData[] {
     return this.databaseService.getSwaps();
   }
 
   @Post()
-  @ApiOperation({ summary: 'Add a new swap' })
+  @ApiOperation({ summary: 'Execute a new swap' })
   @ApiResponse({
     status: 201,
-    description: 'The swap has been successfully created',
+    description: 'The swap has been successfully executed',
   })
   @ApiBody({ type: SwapDto })
-  async addSwap(@Body() swapDto: SwapDto) {
-    const swapData = await this.databaseService.addSwap(swapDto.hash);
-    return { message: 'Swap added successfully', swapData: swapData };
+  async executeSwap(
+    @Body() swapDto: SwapDto,
+  ): Promise<{ message: string; swapData: SwapData }> {
+    const swapData = await this.swapService.executeSwap(swapDto.hash);
+    return { message: 'Swap executed successfully', swapData };
   }
 }
