@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { DatabaseService } from './database/database.service';
 import { SwapService } from './swap/swap.service';
@@ -19,7 +27,6 @@ export class AppController {
   @ApiOperation({ summary: 'Get all swaps' })
   @ApiResponse({ status: 200, description: 'Return all swaps' })
   getSwaps(): SwapData[] {
-    this.logger.log('Getting all swaps');
     return this.databaseService.getSwaps();
   }
 
@@ -32,10 +39,14 @@ export class AppController {
   @ApiBody({ type: SwapDto })
   async executeSwap(
     @Body() swapDto: SwapDto,
-  ): Promise<{ message: string; swapData: SwapData }> {
+  ): Promise<{ message: string; status: string; swapData: SwapData }> {
     this.logger.log(`Executing swap with hash: ${swapDto.hash}`);
-    const swapData = await this.swapService.executeSwap(swapDto.hash);
-    this.logger.log(`Swap executed successfully: ${JSON.stringify(swapData)}`);
-    return { message: 'Swap executed successfully', swapData };
+    const result = await this.swapService.executeSwap(swapDto.hash);
+
+    if (result.status === 'error') {
+      throw new HttpException(result.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return result;
   }
 }

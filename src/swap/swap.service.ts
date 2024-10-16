@@ -22,7 +22,9 @@ export class SwapService {
     this.logger.log('SwapService initialized');
   }
 
-  async executeSwap(hash: string): Promise<SwapData> {
+  async executeSwap(
+    hash: string,
+  ): Promise<{ status: string; message: string; swapData: SwapData }> {
     this.logger.log(`Executing swap for hash: ${hash}`);
     try {
       const tx = await this.provider.getTransaction(hash);
@@ -31,12 +33,44 @@ export class SwapService {
         throw new Error('Transaction not found');
       }
 
-      const receipt = await tx.wait();
+      this.logger.log('Waiting for transaction confirmation...');
+
+      // Wait for at least one confirmation
+      let receipt: ethers.TransactionReceipt | null = null;
+      let confirmations = 0;
+      while (!receipt || confirmations < 1) {
+        try {
+          receipt = await this.provider.getTransactionReceipt(hash);
+          if (receipt) {
+            confirmations = await receipt.confirmations();
+          }
+          if (!receipt || confirmations < 1) {
+            this.logger.log(
+              `Transaction not yet confirmed. Confirmations: ${confirmations}. Waiting...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
+          }
+        } catch (error) {
+          this.logger.error(
+            `Error checking transaction receipt: ${error.message}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+        }
+      }
+
+      this.logger.log(
+        `Transaction confirmed with ${confirmations} confirmation(s)`,
+      );
+      this.logger.debug(`Transaction receipt: ${JSON.stringify(receipt)}`);
+
+      this.logger.log(
+        `Transaction confirmed with ${receipt.confirmations} confirmation(s)`,
+      );
       this.logger.debug(`Transaction receipt: ${JSON.stringify(receipt)}`);
 
       let swapData: SwapData = {
         hash,
-        executed: false, // Set to false initially
+        executed: false,
         user: tx.from,
         operator: tx.to!,
         blockNumber: receipt.blockNumber,
@@ -85,8 +119,7 @@ export class SwapService {
       );
       this.logger.debug(`Signer address: ${signer.address}`);
 
-      ///// Checks /////
-
+      // Perform checks
       if (
         swapData.tokenAddressOnSepolia !==
         '0xF57cE903E484ca8825F2c1EDc7F9EEa3744251eB'
@@ -94,26 +127,21 @@ export class SwapService {
         this.logger.warn(
           `Invalid token address on Sepolia: ${swapData.tokenAddressOnSepolia}`,
         );
-        return swapData;
+        return {
+          status: 'error',
+          message: 'Invalid token address on Sepolia',
+          swapData,
+        };
       }
 
       if (swapData.operator !== signer.address) {
         this.logger.warn(`Invalid recipient: ${swapData.operator}`);
-        return swapData;
+        return { status: 'error', message: 'Invalid recipient', swapData };
       }
 
-      const currentBlockNumber = await this.provider.getBlockNumber();
-      const requiredConfirmations = 1; // You can adjust this number as needed
-      if (currentBlockNumber - swapData.blockNumber < requiredConfirmations) {
-        this.logger.warn(
-          `Not enough confirmations. Current block: ${currentBlockNumber}, Swap block: ${swapData.blockNumber}`,
-        );
-        return swapData;
-      }
-
-      // If all checks pass, proceed with the transfer
+      // Execute the transfer on OP Sepolia
       this.logger.log(
-        `Initiating transfer of ${swapData.amount} tokens to ${swapData.user}`,
+        `Initiating transfer of ${swapData.amount} tokens to ${swapData.user} on OP Sepolia`,
       );
       const erc20onOP = new ethers.Contract(
         swapData.tokenAddressOnOPSepolia!,
@@ -125,20 +153,29 @@ export class SwapService {
         swapData.user,
         ethers.parseUnits(swapData.amount!.toString(), 18), // Assuming 18 decimals, adjust if different
       );
-      const transferCallReceipt = await transferCall.wait(1);
+      // const transferCallReceipt = await transferCall.wait(); // We don't wait for any confirmation
 
       swapData.executed = true;
-      swapData.sendTx = transferCallReceipt.hash;
+      swapData.sendTx = transferCall.hash;
 
-      this.logger.log(`Swap executed: ${transferCallReceipt.hash}`);
+      this.logger.log(`Swap executed: ${transferCall.hash}`);
 
-      // Call the database service to add the swap
+      // Save the swap data
       const savedSwap = await this.databaseService.addSwap(swapData);
       this.logger.debug(`Swap saved to database: ${JSON.stringify(savedSwap)}`);
-      return savedSwap;
+
+      return {
+        status: 'success',
+        message: 'Swap executed successfully',
+        swapData: savedSwap,
+      };
     } catch (error) {
       this.logger.error(`Error executing swap: ${error.message}`, error.stack);
-      throw error;
+      return {
+        status: 'error',
+        message: `Error executing swap: ${error.message}`,
+        swapData: null,
+      };
     }
   }
 }
