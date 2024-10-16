@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as lowdb from 'lowdb';
 import * as FileSync from 'lowdb/adapters/FileSync';
 import * as path from 'path';
@@ -11,6 +11,7 @@ type Schema = {
 
 @Injectable()
 export class DatabaseService {
+  private readonly logger = new Logger(DatabaseService.name);
   private db: lowdb.LowdbSync<Schema>;
 
   constructor(dbFilePath?: string) {
@@ -34,14 +35,17 @@ export class DatabaseService {
 
     // Set default data
     this.db.defaults({ swaps: [] }).write();
+    this.logger.log(`Database initialized with file: ${dbFile}`);
   }
 
   addSwap(swapData: SwapData): SwapData {
+    this.logger.log(`Adding swap to database: ${JSON.stringify(swapData)}`);
     this.db.get('swaps').push(swapData).write();
     return swapData;
   }
 
   getSwaps(): SwapData[] {
+    this.logger.log('Retrieving all swaps from database');
     return this.db.get('swaps').value();
   }
 }

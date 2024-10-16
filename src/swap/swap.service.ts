@@ -28,10 +28,14 @@ export class SwapService {
       const tx = await this.provider.getTransaction(hash);
 
       if (!tx) {
+        this.logger.error(`Transaction not found for hash: ${hash}`);
         throw new Error('Transaction not found');
       }
 
+      this.logger.debug(`Transaction found: ${JSON.stringify(tx)}`);
+
       const receipt = await tx.wait();
+      this.logger.debug(`Transaction receipt: ${JSON.stringify(receipt)}`);
 
       let swapData: SwapData = {
         hash,
@@ -47,6 +51,7 @@ export class SwapService {
 
       // Check if it's an ERC20 transaction
       if (tx.data && tx.data.startsWith('0xa9059cbb')) {
+        this.logger.log('ERC20 transaction detected');
         const erc20Interface = new ethers.Interface([
           'function transfer(address to, uint256 amount)',
           'function decimals() view returns (uint8)',
@@ -66,6 +71,10 @@ export class SwapService {
         recipient = decodedData.args[0];
         const parsedTokenAmount = Number(parseFloat(tokenAmount).toFixed(2));
 
+        this.logger.debug(
+          `Token amount: ${parsedTokenAmount}, Recipient: ${recipient}`,
+        );
+
         swapData = {
           ...swapData,
           isERC20: true,
@@ -82,6 +91,7 @@ export class SwapService {
         process.env.OPERATOR_PRIVATE_KEY!,
         this.providerOP,
       );
+      this.logger.debug(`Signer address: ${signer.address}`);
       const abi = [
         {
           inputs: [
@@ -289,26 +299,38 @@ export class SwapService {
         swapData.tokenAddressOnSepolia !==
         '0xF57cE903E484ca8825F2c1EDc7F9EEa3744251eB'
       ) {
+        this.logger.warn(
+          `Invalid token address on Sepolia: ${swapData.tokenAddressOnSepolia}`,
+        );
         return swapData;
       }
 
       if (recipient !== signer.address) {
+        this.logger.warn(`Invalid recipient: ${recipient}`);
         return swapData;
       }
 
-      if ((await this.provider.getBlockNumber()) - swapData.blockNumber < 1) {
+      const currentBlockNumber = await this.provider.getBlockNumber();
+      if (currentBlockNumber - swapData.blockNumber < 1) {
+        this.logger.warn(
+          `Not enough confirmations. Current block: ${currentBlockNumber}, Swap block: ${swapData.blockNumber}`,
+        );
         return swapData;
       }
 
       if (status !== 'available') {
+        this.logger.warn(`Swap not available. Status: ${status}`);
         return swapData;
       }
 
+      this.logger.log(
+        `Initiating transfer of ${tokenAmount} tokens to ${tx.from}`,
+      );
       const transferCall = await erc20onOP.transfer(
         tx.from,
         ethers.parseEther(tokenAmount!),
       );
-      const transferCallReceipt = await transferCall.wait(1);
+      const transferCallReceipt = await transferCall.wait();
 
       swapData = {
         ...swapData,
@@ -318,9 +340,11 @@ export class SwapService {
       this.logger.log(`Swap executed: ${transferCallReceipt.hash}`);
 
       // Call the database service to add the swap
-      return this.databaseService.addSwap(swapData);
+      const savedSwap = await this.databaseService.addSwap(swapData);
+      this.logger.debug(`Swap saved to database: ${JSON.stringify(savedSwap)}`);
+      return savedSwap;
     } catch (error) {
-      console.error('Error executing swap:', error);
+      this.logger.error(`Error executing swap: ${error.message}`, error.stack);
       throw error;
     }
   }
