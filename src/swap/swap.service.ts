@@ -48,13 +48,13 @@ export class SwapService {
             this.logger.log(
               `Transaction not yet confirmed. Confirmations: ${confirmations}. Waiting...`,
             );
-            await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before checking again
           }
         } catch (error) {
           this.logger.error(
             `Error checking transaction receipt: ${error.message}`,
           );
-          await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retrying
         }
       }
 
@@ -153,7 +153,6 @@ export class SwapService {
         swapData.user,
         ethers.parseUnits(swapData.amount!.toString(), 18), // Assuming 18 decimals, adjust if different
       );
-      // const transferCallReceipt = await transferCall.wait(); // We don't wait for any confirmation
 
       swapData.executed = true;
       swapData.sendTx = transferCall.hash;
@@ -163,6 +162,8 @@ export class SwapService {
       // Save the swap data
       const savedSwap = await this.databaseService.addSwap(swapData);
       this.logger.debug(`Swap saved to database: ${JSON.stringify(savedSwap)}`);
+
+      await this.databaseService.updateAssetBalances(['Sepolia', 'OP Sepolia']);
 
       return {
         status: 'success',
