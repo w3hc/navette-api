@@ -160,4 +160,14 @@ export class DatabaseService implements OnModuleInit {
   getAssets(): Asset[] {
     return this.db.get('assets').value();
   }
+
+  getAssetBalance(network: string, ticker: string): number | null {
+    const asset = this.db.get('assets').find({ network, ticker }).value();
+
+    if (asset) {
+      return asset.currentBalance;
+    }
+
+    return null;
+  }
 }
