@@ -1,8 +1,4 @@
 {
-  "swaps": [
-    {
-      "hash": "defaultTestHash",
-      "executed": true
-    }
-  ]
+  "swaps": [],
+  "assets": []
 }

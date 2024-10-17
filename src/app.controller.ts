@@ -6,8 +6,15 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { DatabaseService } from './database/database.service';
 import { SwapService } from './swap/swap.service';
 import { SwapDto } from './dto/swap.dto';
@@ -48,5 +55,34 @@ export class AppController {
     }
 
     return result;
+  }
+
+  @Get('available')
+  @ApiOperation({ summary: 'Get available balance for a specific asset' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the current balance of the specified asset',
+  })
+  @ApiQuery({
+    name: 'network',
+    required: true,
+    type: String,
+    description: 'The network of the asset',
+    example: 'Sepolia',
+  })
+  @ApiQuery({
+    name: 'ticker',
+    required: true,
+    type: String,
+    description: 'The ticker symbol of the asset',
+    example: 'BASIC',
+  })
+  getAvailableBalance(
+    @Query('network') network: string = 'Sepolia',
+    @Query('ticker') ticker: string = 'BASIC',
+  ): { currentBalance: number | null } {
+    this.logger.log(`Getting available balance for ${ticker} on ${network}`);
+    const balance = this.databaseService.getAssetBalance(network, ticker);
+    return { currentBalance: balance };
   }
 }
