@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { DatabaseService } from './database/database.service';
 import { SwapService } from './swap/swap.service';
+import { DemonService } from './demon/demon.service';
 import * as path from 'path';
 
 @Module({
@@ -9,6 +10,7 @@ import * as path from 'path';
   controllers: [AppController],
   providers: [
     SwapService,
+    DemonService,
     {
       provide: DatabaseService,
       useFactory: () => {
