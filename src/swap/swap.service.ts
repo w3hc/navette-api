@@ -27,6 +27,21 @@ export class SwapService {
   ): Promise<{ status: string; message: string; swapData: SwapData }> {
     this.logger.log(`Executing swap for hash: ${hash}`);
     try {
+      // Check if any swap with this hash exists, regardless of execution status
+      const existingSwaps = this.databaseService.getSwaps();
+      const existingSwap = existingSwaps.find((swap) => swap.hash === hash);
+
+      if (existingSwap) {
+        this.logger.warn(`Swap already exists for hash: ${hash}`);
+        return {
+          status: 'error',
+          message: existingSwap.executed
+            ? 'This transaction has already been processed and executed'
+            : 'This transaction is already being processed',
+          swapData: existingSwap,
+        };
+      }
+
       const tx = await this.provider.getTransaction(hash);
 
       if (!tx) {
